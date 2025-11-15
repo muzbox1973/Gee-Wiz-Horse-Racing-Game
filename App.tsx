@@ -5,6 +5,8 @@ import { GameState } from './types';
 import { INITIAL_HORSES, TRACK_LENGTH, RACE_INTERVAL, MAX_STEP, INITIAL_PLAYER_BALANCE, WIN_PAYOUT_MULTIPLIER } from './constants';
 import GameBoard from './components/GameBoard';
 import BettingChip from './components/BettingChip';
+import LanguageSwitcher from './components/LanguageSwitcher';
+import { translations, Language } from './translations';
 
 const App: React.FC = () => {
   const [horses, setHorses] = useState<Horse[]>(INITIAL_HORSES);
@@ -14,17 +16,20 @@ const App: React.FC = () => {
   const [bettingPlayerIndex, setBettingPlayerIndex] = useState<number>(0);
   const [selectedHorseId, setSelectedHorseId] = useState<number | null>(null);
   const [betAmount, setBetAmount] = useState<string>('10');
+  const [language, setLanguage] = useState<Language>('en');
 
   const [winner, setWinner] = useState<Horse | null>(null);
 
   const animationFrameId = useRef<number | null>(null);
   const lastUpdateTime = useRef<number>(0);
 
+  const t = (key: keyof typeof translations) => translations[key][language];
+
   const handleSetNumPlayers = (count: number) => {
     setNumPlayers(count);
     const newPlayers = Array.from({ length: count }, (_, i) => ({
       id: i,
-      name: `Player ${i + 1}`,
+      name: `${t('player')} ${i + 1}`,
       balance: INITIAL_PLAYER_BALANCE,
       betOnHorseId: null,
       betAmount: 0,
@@ -86,7 +91,6 @@ const App: React.FC = () => {
       }
     }
 
-    // FIX: raceWinner was not defined in this scope
     if (!raceWinner) {
         animationFrameId.current = requestAnimationFrame(runRace);
     }
@@ -105,7 +109,6 @@ const App: React.FC = () => {
     const amount = parseInt(betAmount, 10);
     const currentPlayer = players[bettingPlayerIndex];
     if (selectedHorseId === null || isNaN(amount) || amount <= 0 || amount > currentPlayer.balance) {
-      // Basic validation
       return;
     }
     
@@ -119,8 +122,6 @@ const App: React.FC = () => {
       setBettingPlayerIndex(bettingPlayerIndex + 1);
       setSelectedHorseId(null);
       setBetAmount('10');
-    } else {
-        // Last player has bet, do nothing, wait for start race
     }
   };
   
@@ -138,7 +139,7 @@ const App: React.FC = () => {
       case GameState.Setup:
         return (
             <div className="text-center bg-gray-800 p-6 rounded-lg shadow-lg">
-                <h2 className="text-3xl font-bold mb-4">How many players?</h2>
+                <h2 className="text-3xl font-bold mb-4">{t('howManyPlayers')}</h2>
                 <div className="flex justify-center gap-4">
                     {[1, 2, 3, 4, 5, 6].map(n => (
                         <button key={n} onClick={() => handleSetNumPlayers(n)} className="font-bungee text-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold w-16 h-16 rounded-lg shadow-lg transform transition-transform duration-200 hover:scale-110">
@@ -152,14 +153,14 @@ const App: React.FC = () => {
         return (
             <div className="w-full bg-gray-800 p-6 rounded-lg shadow-lg">
                 <h3 className="text-center text-2xl font-bold mb-2">
-                    {`Place Your Bet, ${currentPlayer.name}`}
+                    {`${t('placeYourBet')} ${currentPlayer.name}`}
                 </h3>
-                <p className="text-center text-lg text-yellow-400 mb-4">Balance: {currentPlayer.balance} points</p>
+                <p className="text-center text-lg text-yellow-400 mb-4">{t('balancePoints')} {currentPlayer.balance} {t('points')}</p>
                 
                 <div className="flex items-center justify-center gap-4 mb-6">
                     <input type="number" value={betAmount} onChange={e => setBetAmount(e.target.value)} className="w-32 text-center bg-gray-700 text-white font-bold py-2 px-4 rounded-lg text-xl" />
                     <button onClick={handlePlaceBet} disabled={selectedHorseId === null || !!currentPlayer.betOnHorseId} className="font-bungee text-lg bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform duration-200 hover:scale-105 disabled:cursor-not-allowed">
-                      {currentPlayer.betOnHorseId !== null ? 'Bet Placed' : 'Place Bet'}
+                      {currentPlayer.betOnHorseId !== null ? t('betPlaced') : t('placeBet')}
                     </button>
                 </div>
 
@@ -179,9 +180,9 @@ const App: React.FC = () => {
       case GameState.Finished:
          return (
             <div className="text-center bg-gray-800 p-6 rounded-lg shadow-lg border-2 border-yellow-400 w-full">
-                <h2 className="text-3xl font-bold mb-2">Race Finished!</h2>
+                <h2 className="text-3xl font-bold mb-2">{t('raceFinished')}</h2>
                 <p className="text-xl mb-4">
-                    <span className={`${winner?.textColor} font-bold`}>Horse #{winner ? winner.id + 1 : ''}</span> is the winner!
+                    <span className={`${winner?.textColor} font-bold`}>{t('horse')}{winner ? winner.id + 1 : ''}</span> {t('isTheWinner')}
                 </p>
                 <div className="space-y-2">
                     {players.map(player => {
@@ -191,9 +192,9 @@ const App: React.FC = () => {
                                 <p className="text-lg">
                                     <span className="font-bold">{player.name}:</span>
                                     {player.betOnHorseId !== null ? 
-                                     ` Bet on #${player.betOnHorseId + 1} and ${playerWon ? 'won' : 'lost'} ${player.betAmount} points.`
-                                     : " Didn't bet."}
-                                    <span className="font-bold ml-2">New Balance: {player.balance}</span>
+                                     ` ${t(playerWon ? 'andWon' : 'andLost')} ${player.betAmount} ${t(playerWon ? 'pointsWonSuffix' : 'pointsLostSuffix')}`
+                                     : ` ${t('didntBet')}`}
+                                    <span className="font-bold ml-2">{t('newBalance')} {player.balance}</span>
                                 </p>
                             </div>
                         )
@@ -209,11 +210,14 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-4xl mx-auto flex flex-col items-center space-y-8">
-        <header className="text-center">
+        <header className="w-full relative text-center">
+            <div className="absolute top-0 right-0">
+                <LanguageSwitcher language={language} setLanguage={setLanguage} />
+            </div>
           <h1 className="font-bungee text-5xl sm:text-7xl text-yellow-400" style={{ textShadow: '3px 3px 0px #ef4444' }}>
-            Gee-Wiz
+            {t('geeWiz')}
           </h1>
-          <p className="text-lg sm:text-2xl text-gray-300 tracking-wider">The Racing Game Sensation</p>
+          <p className="text-lg sm:text-2xl text-gray-300 tracking-wider">{t('racingGameSensation')}</p>
         </header>
 
         {players.length > 0 && (
@@ -222,9 +226,9 @@ const App: React.FC = () => {
                     {players.map(p => (
                         <div key={p.id} className={`text-center p-2 rounded ${bettingPlayerIndex === p.id && gameState === GameState.Betting ? 'bg-yellow-500/20' : ''}`}>
                             <p className="font-bold">{p.name}</p>
-                            <p className="text-sm text-gray-400">Bal: {p.balance}</p>
+                            <p className="text-sm text-gray-400">{t('balance')}: {p.balance}</p>
                             <p className="text-sm text-yellow-300">
-                                {p.betOnHorseId !== null ? `Bet: ${p.betAmount} on #${p.betOnHorseId + 1}` : 'No Bet'}
+                                {p.betOnHorseId !== null ? `${t('bet')}: ${p.betAmount} ${t('on')}${p.betOnHorseId + 1}` : t('noBet')}
                             </p>
                         </div>
                     ))}
@@ -239,18 +243,18 @@ const App: React.FC = () => {
         <div className="flex justify-center h-16">
             {gameState === GameState.Betting && allBetsPlaced && (
                  <button onClick={handleStartRace} className="font-bungee text-2xl bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-10 rounded-lg shadow-lg transform transition-transform duration-200 hover:scale-105">
-                    Start Race
+                    {t('startRace')}
                 </button>
             )}
             {gameState === GameState.Finished && (
                 <button onClick={resetForNewRound} className="font-bungee text-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-lg shadow-lg transform transition-transform duration-200 hover:scale-105">
-                    Play Again
+                    {t('playAgain')}
                 </button>
             )}
         </div>
 
         <footer className="text-gray-500 text-center text-sm pt-4">
-            A modern tribute to the classic Wolverine Supply & Mfg. Co. game.
+            {t('footer')}
         </footer>
       </div>
     </div>
